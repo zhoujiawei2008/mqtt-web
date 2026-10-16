@@ -87,7 +87,7 @@ DEF_HOST = os.getenv("MQTT_HOST", "broker.example.com")
 DEF_PORT = int(os.getenv("MQTT_PORT", "1883"))
 DEF_TLS = os.getenv("MQTT_TLS", "0").strip().lower() in ("1", "true", "yes", "on")
 DEF_CA = os.getenv("MQTT_CA", os.path.join("broker-ca", "certs", "ca.crt"))
-DEF_USER = os.getenv("MQTT_USER", "mqtt")
+DEF_USER = os.getenv("MQTT_USER", "")
 DEF_PASS = os.getenv("MQTT_PASS", "")
 
 # --------------------------------------------------------------------------- #

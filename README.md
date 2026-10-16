@@ -91,13 +91,13 @@ Topic       tasmota_%06X
 
 ### 2. 告訴工具 Broker 位在哪裡
 
-可以下參數、可以設環境變數，也可以讓網頁面板自己寫一份設定檔：
+最快的做法是設環境變數（完整說明見下一節「設定說明」）：
 
 ```bash
 export MQTT_HOST=your.broker.example
 export MQTT_PORT=1883
-export MQTT_USER=mqtt
-export MQTT_PASS=your-password
+export MQTT_USER=your-broker-username
+export MQTT_PASS=your-broker-password
 export MQTT_DEVICE=6FCE2C
 ```
 
@@ -107,6 +107,110 @@ export MQTT_DEVICE=6FCE2C
 python mqtt-cli.py status --json      # 讀取繼電器狀態
 python mqtt-cli.py on                 # 開啟
 ```
+
+---
+
+## 設定說明 —— 連線、帳號與憑證
+
+### 本儲存庫中的佔位符
+
+程式碼裡的連線預設值**已全部替換為中性佔位符**。本儲存庫**不含任何真實憑證**——原始作者的 Broker 位址、伺服器位址、使用者名稱與密碼，在發布前都已由 `tools/export.sh` 換掉：
+
+| 程式中的寫法 | 出貨值 | 你要改成 |
+|---|---|---|
+| `DEF_HOST = os.getenv("MQTT_HOST", ...)` | `"broker.example.com"` | 你的 Broker 位址 |
+| `DEF_PORT = int(os.getenv("MQTT_PORT", "1883"))` | `1883` | 明文用 1883，TLS 用 8883 |
+| `DEF_TLS = os.getenv("MQTT_TLS", "0")` | `"0"`（關閉） | 設為 `1` 開啟 TLS |
+| `DEF_CA = os.getenv("MQTT_CA", ...)` | `broker-ca/certs/ca.crt` | 你的 CA 憑證路徑 |
+| `DEF_USER = os.getenv("MQTT_USER", "")` | **空字串** | 你的 Broker 使用者名稱 |
+| `DEF_PASS = os.getenv("MQTT_PASS", "")` | **空字串** | 你的 Broker 密碼 |
+
+> ⚠️ `MQTT_USER` 與 `MQTT_PASS` 的預設值是**空的**。如果你的 Broker 要求認證而你沒有提供，連線會被拒絕。請務必用下列任一種方式補上。
+
+### 命令列工具的設定來源與優先順序
+
+`mqtt-cli.py` 的優先順序是：**命令列參數 > 環境變數 > 程式內建預設值**。
+
+| 命令列參數 | 環境變數 | 說明 |
+|---|---|---|
+| `--host` | `MQTT_HOST` | Broker 位址 |
+| `--port` | `MQTT_PORT` | 連接埠 |
+| `--user` | `MQTT_USER` | 使用者名稱 |
+| `--password` | `MQTT_PASS` | 密碼 |
+| `--tls` | `MQTT_TLS` | 開啟 TLS |
+| `--ca` | `MQTT_CA` | CA 憑證路徑 |
+| `--device`、`-d` | `MQTT_DEVICE` | 插座晶片編號 |
+| `--timeout` | —— | 等待裝置回覆的秒數 |
+
+範例：完全不依賴環境變數，把連線資訊寫在命令列上——
+
+```bash
+python mqtt-cli.py on --host broker.example.com --port 1883 \
+                      --user your-broker-username --password your-broker-password \
+                      --device 6FCE2C
+```
+
+Windows PowerShell 的環境變數寫法：
+
+```powershell
+$env:MQTT_HOST = "broker.example.com"
+$env:MQTT_USER = "your-broker-username"
+$env:MQTT_PASS = "your-broker-password"
+```
+
+### 網頁面板的設定檔
+
+`mqtt-web.py` 除了吃參數與環境變數，還會把設定寫進一個與程式放在一起的檔案：
+
+```json
+{
+  "version": 1,
+  "host": "broker.example.com",
+  "port": 1883,
+  "tls": false,
+  "user": "your-broker-username",
+  "password": "your-broker-password",
+  "timeout": 6.0
+}
+```
+
+存成 `mqtt-web-settings.json`，或直接用面板上的「设置」對話框填寫（存檔後立即生效，不必重啟）。<!-- zh-Hans -->
+
+**優先順序與命令列工具相反：設定檔 > 命令列參數 > 環境變數 > 內建預設值。** 只要 `mqtt-web-settings.json` 存在且有存過內容，它就會蓋掉命令列——面板啟動時會在終端機印出 `NOTE: ... overrides the command line for ...` 提醒你被蓋掉了哪幾項。想回到啟動時的值，按設定頁的「恢复启动值」（等同於刪掉該檔案）。<!-- zh-Hans -->
+
+密碼欄位永遠不會被回填到瀏覽器：對話框開啟時它是空的，**留空代表沿用已儲存的密碼**；要清掉已存密碼，得另外勾選「保存时清除已保存的密码」。<!-- zh-Hans -->
+
+> ℹ️ 面板的介面文字目前是**簡體中文**，本文件為繁體中文，兩邊用語略有差異。
+
+### 裝置密碼本
+
+面板另外用 `mqtt-web-vault.json` 保存**插座本身**的登入密碼（不是 Broker 的），供管理員一鍵登入裝置：
+
+```json
+{
+  "version": 1,
+  "devices": [
+    { "id": "6FCE2C", "password": "device-password", "note": "", "added": "2026-09-27T11:26:09" }
+  ]
+}
+```
+
+這是明文儲存，且只在管理員帳號下可見。
+
+### 憑證不要進版本控制
+
+`.gitignore` 已預先排除下列檔案，請不要把它們提交上去：
+
+```
+mqtt-web-settings.json     # Broker 連線資訊，含明文密碼
+mqtt-web-vault.json        # 插座登入密碼，明文
+mqtt-web-users.json        # 帳號紀錄（雜湊與鹽）
+mqtt-web-devices.json      # 你的插座序號清單
+mqtt-web-users/            # 每個帳號各自的裝置清單
+*.bak                      # 工具為上述檔案保留的上一版備份
+```
+
+**更推薦的做法**：不要把憑證寫進程式或設定檔，改用環境變數，或讓系統的機密管理工具注入。若一定要用設定檔，請確認它已被 `.gitignore` 涵蓋。
 
 ---
 
@@ -307,7 +411,7 @@ Ctrl-C to stop.
 - `--no-auth` 會讓任何能連到面板的人切換**任何**繼電器。
 - 在 Windows 上，首次的連入連線可能還需要為該連接埠加一條防火牆規則。
 
-本儲存庫**不含任何憑證**。Broker 主機、其位址與密碼在發布前都已替換為佔位符——詳見 `tools/export.sh`，它會在執行時從私有的工作副本中讀出這些值，只要有任何一項殘留就拒絕產出。
+本儲存庫**不含任何憑證**。Broker 主機、其位址、使用者名稱與密碼在發布前都已替換為佔位符（詳見上面的「設定說明」）——`tools/export.sh` 會在執行時從私有的工作副本中讀出這些值，只要有任何一項殘留就拒絕產出。
 
 ---
 
@@ -385,5 +489,6 @@ Tasmota 是 Theo Arends 與其貢獻者所開發的獨立專案，以 GPL-3.0 �
 
 HK Ocean Technology Development Co., Limited
 
+- **電子郵箱：** web@hkocean.hk
 - **中文地址：** 香港九龍新蒲崗彩虹道 206-208 號盛景工業大廈 1 樓 B19 室
 - **英文地址：** Room B19 1/F, Shing King Ind. Bldg., 206-208 Choi Hung Road, San Po Kong, Kowloon, Hong Kong
