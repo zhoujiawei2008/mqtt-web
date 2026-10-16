@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "devices": [
+    {
+      "id": "6FCE2C",
+      "note": "living room AC",
+      "added": "2026-09-26T18:30:00"
+    },
+    {
+      "id": "A1B2C3",
+      "note": "bedroom humidifier",
+      "added": "2026-09-26T18:31:00"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "host": "broker.example.com",
+  "port": 1883,
+  "tls": false,
+  "user": "mqtt",
+  "password": "CHANGE-ME",
+  "timeout": 6.0
+}
